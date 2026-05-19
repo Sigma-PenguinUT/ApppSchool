@@ -8,7 +8,8 @@ import Timer from './components/Timer';
 import Tasks from './components/Tasks';
 import ProgressTracker from './components/ProgressTracker';
 import VolunteerTracker from './components/VolunteerTracker';
-import { Calendar, Music, Sparkles, Coffee, Heart } from 'lucide-react';
+import ScheduleView from './components/ScheduleView';
+import { Calendar, Music, Sparkles, Coffee, Heart, User, Layout, ListChecks } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Task, Priority } from './types';
@@ -17,6 +18,8 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [view, setView] = useState<'dashboard' | 'volunteer'>('dashboard');
+  const [tab, setTab] = useState<'timer' | 'schedule'>('timer');
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [sessionStats, setSessionStats] = useState({
     sessionTime: 0,
     pomodoros: 0,
@@ -90,8 +93,19 @@ export default function App() {
     if (tasks.length === 0) return 0;
     const totalWeight = tasks.reduce((acc, t) => acc + t.priority, 0);
     const completedWeight = tasks.filter(t => t.completed).reduce((acc, t) => acc + t.priority, 0);
-    return Math.round((completedWeight / totalWeight) * 100);
+    const timeBonus = Math.floor(sessionStats.sessionTime / 300); // Bonus for every 5 mins
+    return Math.min(100, Math.round((completedWeight / totalWeight) * 100) + timeBonus);
   };
+
+  const getRank = (score: number) => {
+    if (score > 90) return { title: 'Grandmaster', color: 'text-rose-500' };
+    if (score > 75) return { title: 'Elite Scholar', color: 'text-amber-500' };
+    if (score > 50) return { title: 'Focused', color: 'text-blue-500' };
+    if (score > 25) return { title: 'Apprentice', color: 'text-slate-500' };
+    return { title: 'Novice', color: 'text-slate-400' };
+  };
+
+  const currentRank = getRank(calculateScore());
 
   return (
     <div className="min-h-screen flex flex-col items-center py-10 px-4 md:px-10">
@@ -120,22 +134,46 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-4 md:gap-6 glass-card px-4 md:px-6 py-2"
+          className="flex items-center gap-3 md:gap-4"
         >
-          <button 
-            onClick={() => setView(view === 'dashboard' ? 'volunteer' : 'dashboard')}
-            className={cn(
-              "flex items-center gap-2 transition-colors text-[11px] font-bold uppercase tracking-wider btn-interactive",
-              view === 'volunteer' ? "text-rose-500" : "text-slate-600 hover:text-slate-900"
-            )}
-          >
-            <Heart size={14} className={view === 'volunteer' ? "fill-current" : ""} />
-            <span className="hidden sm:inline">Volunteer Tracker</span>
-          </button>
-          <div className="w-px h-4 bg-slate-200" />
-          <div className="hidden md:flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <Calendar size={14} />
-            <span>May 15, 2026</span>
+          {/* Role Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button 
+              onClick={() => setRole('student')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all",
+                role === 'student' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              Matthew (S)
+            </button>
+            <button 
+              onClick={() => setRole('teacher')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all",
+                role === 'teacher' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              Teacher
+            </button>
+          </div>
+
+          <div className="glass-card px-4 md:px-6 py-2 flex items-center gap-4 md:gap-6">
+            <button 
+              onClick={() => setView(view === 'dashboard' ? 'volunteer' : 'dashboard')}
+              className={cn(
+                "flex items-center gap-2 transition-colors text-[11px] font-bold uppercase tracking-wider btn-interactive",
+                view === 'volunteer' ? "text-rose-500" : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <Heart size={14} className={view === 'volunteer' ? "fill-current" : ""} />
+              <span className="hidden sm:inline">Impact</span>
+            </button>
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="hidden md:flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+              <Calendar size={14} />
+              <span>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
           </div>
         </motion.div>
       </header>
@@ -152,36 +190,79 @@ export default function App() {
             >
               {/* Main Content: 8 Columns */}
               <div className="lg:col-span-8 flex flex-col gap-8 w-full">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-                  {/* Left: Timer */}
-                  <div className="w-full h-full">
-                    <Timer 
-                      onTick={onTimerTick} 
-                      activeTask={activeTask}
-                    />
-                  </div>
-
-                  {/* Right: Tracker Stack */}
-                  <div className="flex flex-col gap-8 h-full">
-                    <div className="glass-card p-8 flex-1 flex flex-col justify-center">
-                      <ProgressTracker total={tasks.length} completed={completedCount} />
-                    </div>
-                    
-                    <div 
-                      onClick={() => setView('volunteer')}
-                      className="glass-card p-6 flex items-center gap-4 cursor-pointer hover:bg-rose-50/50 transition-colors group"
-                    >
-                      <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500 group-hover:scale-110 transition-transform">
-                        <Heart size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-slate-800 text-sm font-bold">Volunteer Tracker</h4>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Click to manage hours</p>
-                      </div>
-                      <Sparkles className="ml-auto text-rose-300 opacity-0 group-hover:opacity-100 transition-opacity" size={16} />
-                    </div>
-                  </div>
+                {/* Tab Navigation */}
+                <div className="flex gap-2 p-1 bg-white/50 backdrop-blur-sm border border-slate-100 rounded-2xl w-fit">
+                  <button 
+                    onClick={() => setTab('timer')}
+                    className={cn(
+                      "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                      tab === 'timer' ? "bg-slate-900 text-white shadow-xl shadow-slate-900/10" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <Layout size={14} />
+                    Timer
+                  </button>
+                  <button 
+                    onClick={() => setTab('schedule')}
+                    className={cn(
+                      "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                      tab === 'schedule' ? "bg-slate-900 text-white shadow-xl shadow-slate-900/10" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <Calendar size={14} />
+                    Schedule
+                  </button>
                 </div>
+
+                <AnimatePresence mode="wait">
+                  {tab === 'timer' ? (
+                    <motion.div 
+                      key="timer-view"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch"
+                    >
+                      {/* Left: Timer */}
+                      <div className="w-full h-full">
+                        <Timer 
+                          onTick={onTimerTick} 
+                          activeTask={activeTask}
+                        />
+                      </div>
+
+                      {/* Right: Tracker Stack */}
+                      <div className="flex flex-col gap-8 h-full">
+                        <div className="glass-card p-8 flex-1 flex flex-col justify-center">
+                          <ProgressTracker total={tasks.length} completed={completedCount} />
+                        </div>
+                        
+                        <div 
+                          onClick={() => setView('volunteer')}
+                          className="glass-card p-6 flex items-center gap-4 cursor-pointer hover:bg-rose-50/50 transition-colors group"
+                        >
+                          <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500 group-hover:scale-110 transition-transform">
+                            <Heart size={20} />
+                          </div>
+                          <div>
+                            <h4 className="text-slate-800 text-sm font-bold">Impact Meter</h4>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Volunteer Hours & Metrics</p>
+                          </div>
+                          <Sparkles className="ml-auto text-rose-300 opacity-0 group-hover:opacity-100 transition-opacity" size={16} />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="schedule-view"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                    >
+                      <ScheduleView tasks={tasks} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Bottom Row Stats */}
                 <div className="glass-card p-8 bg-white">
@@ -195,11 +276,11 @@ export default function App() {
                       <span className="text-2xl font-mono font-bold text-slate-900">{sessionStats.pomodoros}</span>
                     </div>
                     <div className="flex flex-col border-l border-slate-100 sm:pl-8">
-                      <h3 className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-[0.2em]">Rank & Score</h3>
+                      <h3 className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-[0.2em]">Rank & Mastery</h3>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-mono font-bold text-slate-300">{calculateScore()}%</span>
-                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                          {calculateScore() > 80 ? 'Elite' : calculateScore() > 50 ? 'Scholar' : 'Novice'}
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", currentRank.color)}>
+                          {currentRank.title}
                         </span>
                       </div>
                     </div>
@@ -209,12 +290,32 @@ export default function App() {
 
               {/* Sidebar: 4 Columns */}
               <aside className="lg:col-span-4 glass-card p-8 flex flex-col min-h-[600px] lg:h-[calc(100vh-200px)] lg:sticky lg:top-10">
-                <Tasks 
-                  tasks={tasks} 
-                  setTasks={setTasks} 
-                  activeTaskId={activeTaskId} 
-                  setActiveTaskId={setActiveTaskId} 
-                />
+                {role === 'teacher' ? (
+                  <div className="flex flex-col h-full items-center justify-center text-center p-6 bg-slate-900 rounded-3xl text-white">
+                    <User className="text-amber-400 mb-4" size={48} />
+                    <h3 className="text-lg font-bold mb-2">Teacher Dashboard</h3>
+                    <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                      Review student progress, manage class assignments, and monitor collective study time.
+                    </p>
+                    <div className="w-full space-y-3">
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between">
+                        <span className="text-[10px] font-bold uppercase">Assigned Tasks</span>
+                        <span className="text-amber-400 font-mono">{tasks.length}</span>
+                      </div>
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between">
+                        <span className="text-[10px] font-bold uppercase">Class Score</span>
+                        <span className="text-emerald-400 font-mono">{calculateScore()}%</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Tasks 
+                    tasks={tasks} 
+                    setTasks={setTasks} 
+                    activeTaskId={activeTaskId} 
+                    setActiveTaskId={setActiveTaskId} 
+                  />
+                )}
                 
                 <div className="mt-8 pt-6 border-t border-slate-100">
                    <div className="flex items-center gap-2 mb-2">

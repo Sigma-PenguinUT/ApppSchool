@@ -27,22 +27,31 @@ interface TimerProps {
 }
 
 export default function Timer({ onTick, activeTask }: TimerProps) {
+  const [customDurations, setCustomDurations] = useState({
+    study: 25,
+    break: 5
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [mode, setMode] = useState<TimerMode>('study');
-  const [timeLeft, setTimeLeft] = useState(MODES.study.seconds);
+  const [timeLeft, setTimeLeft] = useState(customDurations.study * 60);
   const [isActive, setIsActive] = useState(false);
 
   const toggleTimer = () => setIsActive(!isActive);
 
   const resetTimer = useCallback(() => {
     setIsActive(false);
-    setTimeLeft(MODES[mode].seconds);
-  }, [mode]);
+    setTimeLeft(customDurations[mode] * 60);
+  }, [mode, customDurations]);
 
   const switchMode = (newMode: TimerMode) => {
     setMode(newMode);
     setIsActive(false);
-    setTimeLeft(MODES[newMode].seconds);
+    setTimeLeft(customDurations[newMode] * 60);
   };
+
+  useEffect(() => {
+    setTimeLeft(customDurations[mode] * 60);
+  }, [customDurations, mode]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -95,11 +104,50 @@ export default function Timer({ onTick, activeTask }: TimerProps) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const progress = (timeLeft / MODES[mode].seconds) * 100;
+  const progress = (timeLeft / (customDurations[mode] * 60)) * 100;
   const ActiveIcon = MODES[mode].icon;
 
   return (
     <div className="flex flex-col items-center justify-center p-8 glass-card w-full max-w-md mx-auto relative overflow-hidden">
+      {/* Settings Overlay */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md p-8 flex flex-col justify-center"
+          >
+            <h3 className="text-xl font-black text-slate-900 mb-6">Timer Settings</h3>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Focus Duration (Min)</label>
+                <input 
+                  type="number"
+                  value={customDurations.study}
+                  onChange={(e) => setCustomDurations(prev => ({ ...prev, study: parseInt(e.target.value) || 1 }))}
+                  className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-mono text-xl focus:ring-2 focus:ring-amber-500/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Break Duration (Min)</label>
+                <input 
+                  type="number"
+                  value={customDurations.break}
+                  onChange={(e) => setCustomDurations(prev => ({ ...prev, break: parseInt(e.target.value) || 1 }))}
+                  className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-mono text-xl focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsSettingsOpen(false)}
+              className="mt-8 w-full bg-slate-900 text-white py-4 rounded-2xl font-bold btn-interactive"
+            >
+              Done
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Active Task Mini Indicator */}
       <AnimatePresence>
         {activeTask && !activeTask.completed && mode === 'study' && (
@@ -208,7 +256,12 @@ export default function Timer({ onTick, activeTask }: TimerProps) {
           {isActive ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
         </button>
 
-        <div className="w-14" /> {/* Spacer to balance reset button */}
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="p-4 rounded-2xl bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-all btn-interactive"
+        >
+          <Target size={24} />
+        </button>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ interface TasksProps {
 
 export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }: TasksProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     detail: '',
@@ -27,19 +28,34 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
     if (!formData.title || !formData.duration) return;
     
     const durationMins = parseInt(formData.duration);
-    const newTask: Task = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: formData.title,
-      detail: formData.detail,
-      priority: formData.priority,
-      duration: durationMins,
-      remainingTime: durationMins * 60,
-      dueDate: formData.dueDate,
-      dueTime: formData.dueTime,
-      completed: false
-    };
     
-    setTasks([...tasks, newTask]);
+    if (editingId) {
+      setTasks(tasks.map(t => t.id === editingId ? {
+        ...t,
+        title: formData.title,
+        detail: formData.detail,
+        priority: formData.priority,
+        duration: durationMins,
+        remainingTime: durationMins * 60,
+        dueDate: formData.dueDate,
+        dueTime: formData.dueTime
+      } : t));
+      setEditingId(null);
+    } else {
+      const newTask: Task = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: formData.title,
+        detail: formData.detail,
+        priority: formData.priority,
+        duration: durationMins,
+        remainingTime: durationMins * 60,
+        dueDate: formData.dueDate,
+        dueTime: formData.dueTime,
+        completed: false
+      };
+      setTasks([...tasks, newTask]);
+    }
+    
     setFormData({
       title: '',
       detail: '',
@@ -49,6 +65,19 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
       dueTime: '23:59'
     });
     setIsAdding(false);
+  };
+
+  const startEdit = (task: Task) => {
+    setFormData({
+      title: task.title,
+      detail: task.detail,
+      priority: task.priority,
+      duration: task.duration.toString(),
+      dueDate: task.dueDate,
+      dueTime: task.dueTime
+    });
+    setEditingId(task.id);
+    setIsAdding(true);
   };
 
   const toggleTask = (id: string) => {
@@ -100,8 +129,14 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
             className="absolute inset-x-0 top-0 z-50 glass-card p-6 bg-white border-2 border-slate-900 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-black text-lg text-slate-900">Add New Goal</h3>
-              <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600">
+              <h3 className="font-black text-lg text-slate-900">{editingId ? 'Edit Goal' : 'Add New Goal'}</h3>
+              <button 
+                onClick={() => {
+                  setIsAdding(false);
+                  setEditingId(null);
+                }} 
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <Plus className="rotate-45" size={24} />
               </button>
             </div>
@@ -183,7 +218,7 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                 type="submit"
                 className="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all btn-interactive"
               >
-                Create Task
+                {editingId ? 'Save Changes' : 'Create Task'}
               </button>
             </form>
           </motion.div>
@@ -266,6 +301,16 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                         {task.title}
                       </h4>
                     </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEdit(task);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-amber-500 transition-all rounded-xl"
+                    >
+                      <Bell size={16} />
+                    </button>
 
                     <button
                       onClick={(e) => {

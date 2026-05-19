@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --color-lofi-bg: #f8fafc;
+  --color-lofi-card: rgba(255, 255, 255, 0.8);
+  --color-lofi-accent: #f59e0b;
+  --color-lofi-accent-soft: rgba(245, 158, 11, 0.1);
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 min-h-screen font-sans relative overflow-x-hidden;
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.05) 0%, transparent 50%);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    opacity: 0.02;
+    pointer-events: none;
+    z-index: 50;
+    filter: brightness(0%) contrast(150%);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-3xl shadow-sm hover:shadow-md transition-shadow duration-300;
+  }
+  
+  .btn-interactive {
+    @apply active:scale-95 transition-all duration-200;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}

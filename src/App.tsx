@@ -9,7 +9,7 @@ import Tasks from './components/Tasks';
 import ProgressTracker from './components/ProgressTracker';
 import VolunteerTracker from './components/VolunteerTracker';
 import ScheduleView from './components/ScheduleView';
-import { Calendar, Music, Sparkles, Coffee, Heart, User, Layout, ListChecks } from 'lucide-react';
+import { Calendar, Music, Sparkles, Coffee, Heart, User, Layout, ListChecks, Trophy, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { Task, Priority } from './types';
@@ -25,12 +25,67 @@ export default function App() {
     pomodoros: 0,
     score: 0
   });
+  const [toast, setToast] = useState<{ title: string; message: string; type: 'success' | 'info' } | null>(null);
+  const [priorCompletedIds, setPriorCompletedIds] = useState<string[]>([]);
+
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        gain.gain.setValueAtTime(0, ctx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + start + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + duration);
+      };
+      
+      playTone(523.25, 0, 0.3);      // C5
+      playTone(659.25, 0.1, 0.3);    // E5
+      playTone(783.99, 0.2, 0.3);    // G5
+      playTone(1046.50, 0.3, 0.5);   // C6
+    } catch (e) {
+      console.warn("Audio Context chime failed", e);
+    }
+  };
+
+  useEffect(() => {
+    const completedIds = tasks.filter(t => t.completed).map(t => t.id);
+    const newlyCompleted = tasks.find(t => t.completed && !priorCompletedIds.includes(t.id));
+    
+    if (newlyCompleted && priorCompletedIds.length > 0) {
+      setToast({
+        title: "Goal Achieved! 🏆",
+        message: `Task "${newlyCompleted.title}" has been successfully completed.`,
+        type: "success"
+      });
+      playChime();
+    }
+    
+    setPriorCompletedIds(completedIds);
+  }, [tasks, priorCompletedIds]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const completedCount = tasks.filter(t => t.completed).length;
 
   // Find active task
   const activeTask = tasks.find(t => t.id === activeTaskId) || 
-                   tasks.sort((a,b) => b.priority - a.priority).find(t => !t.completed);
+                   [...tasks].sort((a,b) => b.priority - a.priority).find(t => !t.completed);
 
   // Sync active task back to state if it was auto-selected
   useEffect(() => {
@@ -349,6 +404,32 @@ export default function App() {
           <button className="text-slate-400 hover:text-slate-600 text-[10px] font-bold uppercase tracking-widest transition-colors">Support</button>
         </div>
       </footer>
+
+      {/* Custom Celebration Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 border border-slate-800 text-white rounded-3xl p-5 shadow-2xl flex items-start gap-4 backdrop-blur-md"
+          >
+            <div className="p-3 bg-amber-500/15 rounded-2xl text-amber-400 flex-shrink-0">
+              <Trophy size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-black text-white">{toast.title}</h4>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

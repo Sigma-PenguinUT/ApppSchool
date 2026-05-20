@@ -89,10 +89,8 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
     if (activeTaskId === id) setActiveTaskId(null);
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    return b.priority - a.priority;
-  });
+  const activeTasks = tasks.filter(t => !t.completed).sort((a, b) => b.priority - a.priority);
+  const completedTasks = tasks.filter(t => t.completed).sort((a, b) => b.priority - a.priority);
 
   const getPriorityColor = (p: Priority) => {
     switch(p) {
@@ -225,19 +223,20 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
         <AnimatePresence mode="popLayout" initial={false}>
-          {tasks.length === 0 ? (
+          {activeTasks.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center py-20 text-slate-300 text-center"
             >
               <AlertCircle size={48} className="mb-4 opacity-10" strokeWidth={1} />
-              <p className="text-[10px] font-black uppercase tracking-widest">No Active Goals</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No Active Goals</p>
+              <p className="text-[9px] text-slate-400 mt-1 uppercase font-semibold">Ready to conquer a new study session?</p>
             </motion.div>
           ) : (
-            sortedTasks.map((task) => {
+            activeTasks.map((task) => {
               const progress = Math.max(0, Math.min(100, (1 - task.remainingTime / (task.duration * 60)) * 100));
               const isActive = activeTaskId === task.id;
 
@@ -252,16 +251,14 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                   className={cn(
                     "group flex flex-col gap-3 p-5 rounded-3xl border transition-all cursor-pointer relative overflow-hidden",
                     isActive ? "ring-2 ring-slate-900 shadow-xl" : "shadow-sm border-slate-100",
-                    task.completed ? "bg-slate-50/50 opacity-60" : "bg-white hover:border-slate-300"
+                    "bg-white hover:border-slate-300"
                   )}
                 >
                   {/* Progress Header Overlay */}
-                  {!task.completed && (
-                    <motion.div 
-                      className="absolute inset-0 bg-slate-900/5 -z-10 origin-left"
-                      style={{ width: `${progress}%` }}
-                    />
-                  )}
+                  <motion.div 
+                    className="absolute inset-0 bg-slate-900/5 -z-10 origin-left"
+                    style={{ width: `${progress}%` }}
+                  />
 
                   <div className="flex items-start gap-4">
                     <button
@@ -271,9 +268,7 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                       }}
                       className={cn(
                         "flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                        task.completed 
-                          ? "bg-emerald-500 border-emerald-500 text-white" 
-                          : "border-slate-200 hover:border-slate-900"
+                        "border-slate-200 hover:border-slate-900"
                       )}
                     >
                       {task.completed && <Check size={14} strokeWidth={4} />}
@@ -294,10 +289,7 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                           </span>
                         )}
                       </div>
-                      <h4 className={cn(
-                        "text-sm font-bold truncate",
-                        task.completed ? "line-through text-slate-400" : "text-slate-800"
-                      )}>
+                      <h4 className="text-sm font-bold truncate text-slate-800">
                         {task.title}
                       </h4>
                     </div>
@@ -326,12 +318,14 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       <span className="flex items-center gap-1"><Calendar size={10} /> {task.dueDate}</span>
-                      <span>{Math.round(progress)}% Left</span>
+                      <span className="font-mono text-slate-500">
+                        {`${Math.floor(task.remainingTime / 60)}m ${task.remainingTime % 60}s left (${Math.round(100 - progress)}%)`}
+                      </span>
                     </div>
                     
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <motion.div 
-                        initial={{ width: 0 }}
+                        initial={{ width: "100%" }}
                         animate={{ width: `${100 - progress}%` }} // Showing remaining percentage as bar width
                         className={cn(
                           "h-full transition-colors",
@@ -344,6 +338,59 @@ export default function Tasks({ tasks, setTasks, activeTaskId, setActiveTaskId }
                 </motion.div>
               );
             })
+          )}
+
+          {/* Completed Goals Accordion section */}
+          {completedTasks.length > 0 && (
+            <motion.div 
+              layout
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-8 pt-6 border-t border-slate-100"
+            >
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                <span>Completed Goals</span>
+                <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[8px] font-bold">
+                  {completedTasks.length} Completed
+                </span>
+              </h3>
+              
+              <div className="space-y-3">
+                {completedTasks.map((task) => (
+                  <motion.div
+                    key={task.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100/50 rounded-2xl group transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={() => toggleTask(task.id)}
+                        className="flex-shrink-0 w-5 h-5 rounded-md bg-emerald-500 text-white flex items-center justify-center transition-all"
+                      >
+                        <Check size={12} strokeWidth={4} />
+                      </button>
+                      <span className="text-xs font-bold text-slate-400 line-through truncate">
+                        {task.title}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        Ended
+                      </span>
+                      <button
+                        onClick={() => deleteTask(task.id)}
+                        className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors rounded-lg"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
